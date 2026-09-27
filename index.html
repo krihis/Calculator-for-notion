@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculator</title>
+<style>
+  :root {
+    --bg: #1e1f26;
+    --display-bg: #14151a;
+    --btn-bg: #2b2d38;
+    --btn-hover: #383b4a;
+    --op-bg: #ff9f43;
+    --op-hover: #ffb15e;
+    --text: #f5f5f7;
+    --muted: #9a9ba5;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #eef0f4;
+      --display-bg: #ffffff;
+      --btn-bg: #ffffff;
+      --btn-hover: #e6e8ee;
+      --op-bg: #ff9f43;
+      --op-hover: #ffb15e;
+      --text: #1e1f26;
+      --muted: #6b6c76;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef0f4;
+    --display-bg: #ffffff;
+    --btn-bg: #ffffff;
+    --btn-hover: #e6e8ee;
+    --text: #1e1f26;
+    --muted: #6b6c76;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  .calculator {
+    width: 100%;
+    max-width: 340px;
+    background: var(--bg);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .display {
+    background: var(--display-bg);
+    border-radius: 16px;
+    padding: 24px 18px;
+    margin-bottom: 16px;
+    text-align: right;
+    overflow: hidden;
+  }
+  .display .prev {
+    color: var(--muted);
+    font-size: 14px;
+    min-height: 18px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+  .display .current {
+    color: var(--text);
+    font-size: 36px;
+    font-weight: 500;
+    word-break: break-all;
+  }
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  button {
+    border: none;
+    border-radius: 14px;
+    background: var(--btn-bg);
+    color: var(--text);
+    font-size: 20px;
+    padding: 18px 0;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(0.96); }
+  button.op {
+    background: var(--op-bg);
+    color: #1e1f26;
+    font-weight: 600;
+  }
+  button.op:hover { background: var(--op-hover); }
+  button.span-2 { grid-column: span 2; }
+  button.muted { color: var(--muted); background: var(--btn-bg); }
+</style>
+</head>
+<body>
+
+<div class="calculator">
+  <div class="display">
+    <div class="prev" id="prevDisplay">&nbsp;</div>
+    <div class="current" id="currentDisplay">0</div>
+  </div>
+  <div class="buttons">
+    <button class="muted" data-action="clear">AC</button>
+    <button class="muted" data-action="sign">+/-</button>
+    <button class="muted" data-action="percent">%</button>
+    <button class="op" data-action="op" data-op="÷">÷</button>
+
+    <button data-num="7">7</button>
+    <button data-num="8">8</button>
+    <button data-num="9">9</button>
+    <button class="op" data-action="op" data-op="×">×</button>
+
+    <button data-num="4">4</button>
+    <button data-num="5">5</button>
+    <button data-num="6">6</button>
+    <button class="op" data-action="op" data-op="−">−</button>
+
+    <button data-num="1">1</button>
+    <button data-num="2">2</button>
+    <button data-num="3">3</button>
+    <button class="op" data-action="op" data-op="+">+</button>
+
+    <button class="span-2" data-num="0">0</button>
+    <button data-action="decimal">.</button>
+    <button class="op" data-action="equals">=</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  let current = "0";
+  let previous = null;
+  let operator = null;
+  let overwrite = true;
+
+  const currentEl = document.getElementById("currentDisplay");
+  const prevEl = document.getElementById("prevDisplay");
+
+  function updateDisplay() {
+    currentEl.textContent = current;
+    prevEl.textContent = previous !== null && operator ? `${previous} ${operator}` : "\u00A0";
+  }
+
+  function inputNumber(n) {
+    if (overwrite) {
+      current = n === "." ? "0." : n;
+      overwrite = false;
+    } else {
+      if (n === "." && current.includes(".")) return;
+      if (current === "0" && n !== ".") current = n;
+      else current += n;
+    }
+  }
+
+  function compute(a, op, b) {
+    a = parseFloat(a);
+    b = parseFloat(b);
+    switch (op) {
+      case "+": return a + b;
+      case "−": return a - b;
+      case "×": return a * b;
+      case "÷": return b === 0 ? NaN : a / b;
+      default: return b;
+    }
+  }
+
+  function formatResult(n) {
+    if (isNaN(n)) return "Error";
+    if (!isFinite(n)) return "Error";
+    let s = String(Math.round(n * 1e10) / 1e10);
+    if (s.length > 14) s = n.toExponential(6);
+    return s;
+  }
+
+  function chooseOperator(op) {
+    if (operator && !overwrite) {
+      current = formatResult(compute(previous, operator, current));
+    }
+    previous = current;
+    operator = op;
+    overwrite = true;
+  }
+
+  function equals() {
+    if (operator === null || overwrite) return;
+    current = formatResult(compute(previous, operator, current));
+    previous = null;
+    operator = null;
+    overwrite = true;
+  }
+
+  function clearAll() {
+    current = "0";
+    previous = null;
+    operator = null;
+    overwrite = true;
+  }
+
+  function toggleSign() {
+    if (current === "0") return;
+    current = current.startsWith("-") ? current.slice(1) : "-" + current;
+  }
+
+  function percent() {
+    current = formatResult(parseFloat(current) / 100);
+  }
+
+  document.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.num !== undefined) {
+        inputNumber(btn.dataset.num);
+      } else if (btn.dataset.action === "op") {
+        chooseOperator(btn.dataset.op);
+      } else if (btn.dataset.action === "equals") {
+        equals();
+      } else if (btn.dataset.action === "clear") {
+        clearAll();
+      } else if (btn.dataset.action === "sign") {
+        toggleSign();
+      } else if (btn.dataset.action === "percent") {
+        percent();
+      } else if (btn.dataset.action === "decimal") {
+        inputNumber(".");
+      }
+      updateDisplay();
+    });
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key >= "0" && e.key <= "9") inputNumber(e.key);
+    else if (e.key === ".") inputNumber(".");
+    else if (e.key === "+") chooseOperator("+");
+    else if (e.key === "-") chooseOperator("−");
+    else if (e.key === "*") chooseOperator("×");
+    else if (e.key === "/") { e.preventDefault(); chooseOperator("÷"); }
+    else if (e.key === "Enter" || e.key === "=") equals();
+    else if (e.key === "Escape") clearAll();
+    else if (e.key === "Backspace") {
+      current = current.length > 1 ? current.slice(0, -1) : "0";
+      overwrite = current === "0";
+    }
+    updateDisplay();
+  });
+
+  updateDisplay();
+})();
+</script>
+
+</body>
+</html>
